@@ -12,6 +12,17 @@ Zentrales Security-Dashboard für SSH-Angriffserkennung, Abuse-Meldungen und Hos
 
 ---
 
+## Schnellstart
+
+```bash
+git clone https://github.com/Maximilian1021/abuse-platform.git
+cd abuse-platform
+```
+
+Dann weiter mit [Installation](#installation) unten.
+
+---
+
 ## Voraussetzungen
 
 - PHP 8.x mit PDO, cURL, mbstring
@@ -163,6 +174,122 @@ User=root
 [Install]
 WantedBy=multi-user.target
 ```
+
+---
+
+## Webserver-Konfiguration
+
+### Nginx — ohne SSL
+
+```nginx
+server {
+    listen 80;
+    server_name abuse.deine-domain.de;
+
+    root /var/www/abuse-platform/public;
+    index index.php;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+    }
+
+    location ~ /\. { deny all; }
+}
+```
+
+### Nginx — mit SSL (Let's Encrypt)
+
+```nginx
+server {
+    listen 80;
+    server_name abuse.deine-domain.de;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name abuse.deine-domain.de;
+
+    ssl_certificate     /etc/letsencrypt/live/abuse.deine-domain.de/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/abuse.deine-domain.de/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+
+    root /var/www/abuse-platform/public;
+    index index.php;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+    }
+
+    location ~ /\. { deny all; }
+}
+```
+
+> SSL-Zertifikat mit Certbot: `certbot --nginx -d abuse.deine-domain.de`
+
+---
+
+### Apache — ohne SSL
+
+```apache
+<VirtualHost *:80>
+    ServerName abuse.deine-domain.de
+    DocumentRoot /var/www/abuse-platform/public
+
+    <Directory /var/www/abuse-platform/public>
+        Options -Indexes +FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    ErrorLog  ${APACHE_LOG_DIR}/abuse-error.log
+    CustomLog ${APACHE_LOG_DIR}/abuse-access.log combined
+</VirtualHost>
+```
+
+### Apache — mit SSL (Let's Encrypt)
+
+```apache
+<VirtualHost *:80>
+    ServerName abuse.deine-domain.de
+    Redirect permanent / https://abuse.deine-domain.de/
+</VirtualHost>
+
+<VirtualHost *:443>
+    ServerName abuse.deine-domain.de
+    DocumentRoot /var/www/abuse-platform/public
+
+    SSLEngine on
+    SSLCertificateFile    /etc/letsencrypt/live/abuse.deine-domain.de/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/abuse.deine-domain.de/privkey.pem
+
+    <Directory /var/www/abuse-platform/public>
+        Options -Indexes +FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    ErrorLog  ${APACHE_LOG_DIR}/abuse-error.log
+    CustomLog ${APACHE_LOG_DIR}/abuse-access.log combined
+</VirtualHost>
+```
+
+> SSL-Zertifikat mit Certbot: `certbot --apache -d abuse.deine-domain.de`
+
+> Für Apache muss `mod_rewrite` aktiviert sein: `a2enmod rewrite && systemctl restart apache2`
 
 ---
 
