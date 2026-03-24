@@ -1,0 +1,22 @@
+# Konfiguration mit Secrets — nie committen
+app/config/agent_config.php
+app/config/config.php
+agents/auth-monitor/auth-monitor.conf
+
+# Datenbanken
+data/
+
+# Logs
+logs/
+
+# Claude Code
+.claude/
+
+# Migrations-Script nach Nutzung löschen
+public/migrate.php
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo

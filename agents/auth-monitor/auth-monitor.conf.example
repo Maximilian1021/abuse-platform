@@ -1,0 +1,24 @@
+# =============================================================================
+#  auth-monitor.conf — Konfiguration für alle auth-monitor Agenten
+#  Kopiere diese Datei nach auth-monitor.conf und trage deine Werte ein.
+# =============================================================================
+
+# MySQL-Datenbank
+DB_HOST="your-db-host"
+DB_PORT="3306"
+DB_USER="db-user"
+DB_PASS="db-password"
+DB_NAME="db-name"
+
+# IP-Info API (ipinfo.io)
+IPINFO_TOKEN="your-ipinfo-token"
+
+# Webhook (auth-webhook.py)
+WEBHOOK_TOKEN="your-webhook-token"
+
+# E-Mail (auth-report.sh)
+EMAIL_TO="abuse@example.com"
+EMAIL_FROM="no-reply@example.com"
+
+# Auto-Block Whitelist DynDNS (auto-block.sh)
+DYNDNS="your-dyndns.example.com"
