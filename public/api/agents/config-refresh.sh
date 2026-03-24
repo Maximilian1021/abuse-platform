@@ -25,7 +25,7 @@ fi
 
 log "Config-Refresh von ${CENTRAL_CONFIG_URL}..."
 
-NEW_CONFIG=$(curl -s --max-time 15 "${CENTRAL_CONFIG_URL}?token=${SERVER_TOKEN}" 2>/dev/null)
+NEW_CONFIG=$(curl -s --max-time 15 -H "X-Token: ${SERVER_TOKEN}" "${CENTRAL_CONFIG_URL}" 2>/dev/null)
 
 if [[ -z "$NEW_CONFIG" ]]; then
     log "WARN: Leere Antwort vom Config-Endpoint — behalte bestehende Config"

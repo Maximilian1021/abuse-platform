@@ -142,7 +142,7 @@ header "Konfiguration laden"
 
 CONFIG_FILE="${INSTALL_DIR}/config.sh"
 
-curl -s --max-time 15 "${PLATFORM}/agent-config.php?token=${SERVER_TOKEN}" > "$CONFIG_FILE" \
+curl -s --max-time 15 -H "X-Token: ${SERVER_TOKEN}" "${PLATFORM}/agent-config.php" > "$CONFIG_FILE" \
     || error "Konfiguration konnte nicht geladen werden."
 
 # Server-spezifische Werte anhängen
