@@ -34,7 +34,7 @@ function fmt(int $n): string {
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-<title>Abuse Platform — max1021.de</title>
+<title><?= htmlspecialchars(pageTitle()) ?></title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -194,7 +194,7 @@ footer {
         <h1>Zentrales <span>Abuse</span> Dashboard</h1>
         <p class="hero-sub">
             Abuse-Meldungen erstellen, per E-Mail an den Hoster verschicken,
-            Antworten verfolgen &ndash; plus Hoster-Kontaktdatenbank für max1021.de.
+            Antworten verfolgen &ndash; plus Hoster-Kontaktdatenbank für <?= htmlspecialchars(siteDomain() ?: siteName()) ?>.
         </p>
     </div>
 
@@ -272,7 +272,7 @@ footer {
 
     <!-- Footer -->
     <footer>
-        <div class="footer-left">Abuse Platform &mdash; <strong>max1021.de</strong></div>
+        <div class="footer-left"><?= footerHtml() ?></div>
         <div class="footer-right">&copy; <?= $year ?></div>
     </footer>
 

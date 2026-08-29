@@ -5,6 +5,7 @@
  *   $navActive = 'hub' | 'report-monitor' | 'hoster-db' | 'admin'
  * Requires: currentUser() available (auth.php already included)
  */
+require_once __DIR__ . '/config.php';
 $_navUser   = currentUser();
 $_navActive = $navActive ?? '';
 ?>
@@ -88,7 +89,7 @@ $_navActive = $navActive ?? '';
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
             </svg>
         </div>
-        <span class="site-nav-brand">Abuse Platform</span>
+        <span class="site-nav-brand"><?= htmlspecialchars(siteName()) ?></span>
     </a>
     <div class="site-nav-links">
         <a href="/" class="site-nav-link <?= $_navActive === 'hub' ? 'active active-blue' : '' ?>">Hub</a>

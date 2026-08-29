@@ -84,7 +84,7 @@ function fmtDate(?string $dt): string {
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-<title>Admin — Abuse Platform</title>
+<title><?= htmlspecialchars(pageTitle('Admin')) ?></title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 

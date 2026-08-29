@@ -32,4 +32,11 @@ return [
     'abuse_from_name'   => 'example.com Abuse',
     'reporter_name'     => 'Vorname Nachname',
     'report_ref_prefix' => 'R',   // Reportnummer: PREFIX-JAHR-NUMMER  ->  R-26-0042  (leer = 26-0042)
+
+    // ── Branding (für eigene Nutzung anpassen) ───────────────────────────────
+    'site_name'   => 'Abuse Platform',      // Nav-Marke + Seitentitel
+    'site_domain' => 'example.com',         // Footer + Titel (leer = weglassen)
+    'footer_html' => '',                    // optional: eigener Footer (HTML erlaubt); leer = auto aus site_name + site_domain
+    'login_note'  => 'Internal Use Only',   // Fußzeile auf der Login-Seite
+    'mail_org'    => 'example.com',          // in Mail-Vorlagen: "<mail_org> infrastructure" / "<mail_org> Abuse Team" (leer = site_domain)
 ];

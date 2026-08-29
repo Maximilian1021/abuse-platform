@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$locked) {
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-<title>Login — Abuse Platform</title>
+<title><?= htmlspecialchars(pageTitle('Login')) ?></title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -257,7 +257,7 @@ h1 {
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
             </svg>
         </div>
-        <div class="logo-text">Abuse Platform</div>
+        <div class="logo-text"><?= htmlspecialchars(siteName()) ?></div>
     </div>
 
     <div class="card">
@@ -309,7 +309,7 @@ h1 {
         </form>
     </div>
 
-    <div class="footer-note">abuse.max1021.de &mdash; Internal Use Only</div>
+    <div class="footer-note"><?php $ln = loginNote(); $sd = siteDomain(); echo htmlspecialchars(trim(($sd !== '' ? $sd : siteName()) . ($ln !== '' ? ' — ' . $ln : ''))); ?></div>
 </div>
 </body>
 </html>

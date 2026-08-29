@@ -6,7 +6,7 @@ require_once __DIR__ . '/../helpers/config.php';
 
 /**
  * Vorlagen für Abuse-Mails. Platzhalter:
- *   {ref} {ip} {reason} {reporter} {date} {evidence} {hoster}
+ *   {ref} {ip} {reason} {reporter} {date} {evidence} {hoster} {org}
  * 'subject' und 'body' werden mit fillTemplate() befüllt.
  */
 function abuseTemplates(): array {
@@ -22,7 +22,7 @@ IP address in your network:
 
   Offending IP : {ip}
   Attack type  : SSH brute-force / credential stuffing
-  Target       : max1021.de infrastructure (port 22)
+  Target       : {org} infrastructure (port 22)
   Our reference: {ref}
   Report date  : {date}
 
@@ -36,7 +36,7 @@ we can match your answer to this case.
 
 Kind regards,
 {reporter}
-max1021.de Abuse Team
+{org} Abuse Team
 TXT,
         ],
         'scan' => [
@@ -50,7 +50,7 @@ systems:
 
   Offending IP : {ip}
   Activity     : {reason}
-  Target       : max1021.de infrastructure
+  Target       : {org} infrastructure
   Our reference: {ref}
   Report date  : {date}
 
@@ -63,7 +63,7 @@ line when replying.
 
 Kind regards,
 {reporter}
-max1021.de Abuse Team
+{org} Abuse Team
 TXT,
         ],
         'generic' => [
@@ -88,7 +88,7 @@ can track your response.
 
 Kind regards,
 {reporter}
-max1021.de Abuse Team
+{org} Abuse Team
 TXT,
         ],
     ];
@@ -118,6 +118,7 @@ function buildDraft(array $report, string $templateKey = 'generic'): array {
         'date'     => date('Y-m-d H:i') . ' UTC',
         'evidence' => trim($report['note'] ?? '') ?: '(bitte Log-Auszug / Belege hier einfügen)',
         'hoster'   => $report['hoster_name'] ?? '',
+        'org'      => mailOrg(),
     ];
 
     return [
