@@ -13,9 +13,9 @@ Internes Tool zum Erstellen, Versenden und Nachverfolgen von Abuse-Meldungen.
 
 ## Ablauf eines Reports
 
-1. **Neu** im Report Monitor: IP, Hoster (aus der Hoster-DB), Grund, Belege/Log-Auszug. Der Report bekommt eine Nummer, z.B. `MAX1021-0042`, Status `Entwurf`.
+1. **Neu** im Report Monitor: IP, Hoster (aus der Hoster-DB), Grund, Belege/Log-Auszug. Der Report bekommt eine Nummer im Format `PREFIX-JAHR-NUMMER` (z.B. `R-26-0042`), Status `Entwurf`. Das `PREFIX` ist frei über `report_ref_prefix` in `app/config/config.php` einstellbar (leer erlaubt → `26-0042`); Jahr und laufende Nummer (pro Kalenderjahr) vergibt das System automatisch.
 2. **Entwurf erzeugen**: Vorlage wählen → Betreff + Text werden vorbefüllt (Platzhalter: IP, Reportnummer, Belege, Datum …). Frei editierbar.
-3. **Report senden**: Mail geht über das eigene Abuse-Postfach (SMTP) an die Abuse-Adresse des Hosters. Die Reportnummer steht im Betreff (`… [MAX1021-0042]`), eine eigene `Message-ID` wird gesetzt.
+3. **Report senden**: Mail geht über das eigene Abuse-Postfach (SMTP) an die Abuse-Adresse des Hosters. Die Reportnummer steht im Betreff (`… [R-26-0042]`), eine eigene `Message-ID` wird gesetzt.
 4. **Antworten abholen**: Ein Cron-Job (`app/mail/imap_poll.php`) prüft das Postfach per IMAP. Eingehende Mails werden zugeordnet über
    1. `In-Reply-To` / `References` (bekannte Message-ID),
    2. Reportnummer im Betreff,
@@ -62,13 +62,14 @@ cp app/config/config.example.php app/config/config.php
 'smtp_user' => 'abuse@example.com', 'smtp_pass' => '…',
 
 // Abuse-Postfach — IMAP (Antworten)
-'imap_host' => 'mail.example.com', 'imap_port' => 993, 'imap_ssl' => true,
+'imap_host' => 'mail.example.com', 'imap_port' => 993, 'imap_secure' => 'ssl',  // 'ssl' (993) | 'starttls' (143) | 'none'
 'imap_user' => 'abuse@example.com', 'imap_pass' => '…',
 'imap_folder' => 'INBOX', 'imap_processed_folder' => '',   // optional: verarbeitete Mails verschieben
 
 // Absender / Meta
 'abuse_from_email' => 'abuse@example.com', 'abuse_from_name' => 'example.com Abuse',
-'reporter_name' => 'Vorname Nachname', 'report_ref_prefix' => 'ABUSE',   // -> ABUSE-0001
+'reporter_name' => 'Vorname Nachname',
+'report_ref_prefix' => 'R',   // Reportnummer PREFIX-JAHR-NUMMER  ->  R-26-0042  (leer -> 26-0042)
 ```
 
 Die MySQL-Tabellen (`platform_users`, `abuse_reports`, `abuse_messages`, `abuse_log_entries`,
