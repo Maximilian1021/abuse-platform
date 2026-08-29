@@ -1,0 +1,11 @@
+# Abuse-Postfach alle 5 Minuten auf Antworten prüfen.
+#
+# Variante A — System-Cron:
+#   sudo cp scripts/imap-poll.cron.example /etc/cron.d/abuse-imap-poll
+#   (Datei braucht eine Leerzeile am Ende, Zeile enthält das User-Feld "root")
+#
+# Variante B — Crontab von root:
+#   sudo crontab -e   und dort die Zeile OHNE das Feld "root" eintragen:
+#   */5 * * * * /usr/bin/php /home/Website/+DOMAINS/MAX1021.DE/abuse.max1021.de/app/mail/imap_poll.php >/dev/null 2>&1
+
+*/5 * * * * root /usr/bin/php /home/Website/+DOMAINS/MAX1021.DE/abuse.max1021.de/app/mail/imap_poll.php >/dev/null 2>&1

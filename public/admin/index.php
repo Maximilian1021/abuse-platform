@@ -58,7 +58,8 @@ if ($action === 'change_password') {
 if ($action === 'delete_user') {
     $id = (int)($_POST['id'] ?? 0);
     if ($id && $id !== $me['id']) {
-        getAuthDB()->prepare("DELETE FROM users WHERE id = ?")->execute([$id]);
+        deleteAllUserTokens($id);
+        deleteUser($id);
         $message = 'Benutzer gelöscht.'; $msgType = 'ok';
     } else {
         $message = 'Eigener Account kann nicht gelöscht werden.'; $msgType = 'error';

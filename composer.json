@@ -1,0 +1,16 @@
+{
+    "name": "max1021/abuse-platform",
+    "description": "Abuse-Report-Tracking mit E-Mail-Versand und Antwort-Überwachung",
+    "type": "project",
+    "require": {
+        "php": ">=8.1",
+        "ext-mbstring": "*",
+        "ext-openssl": "*",
+        "phpmailer/phpmailer": "^6.9",
+        "webklex/php-imap": "^5.3"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    }
+}

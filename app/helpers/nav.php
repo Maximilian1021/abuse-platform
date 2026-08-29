@@ -2,7 +2,7 @@
 /**
  * Shared top navigation
  * Usage: set $navActive before including:
- *   $navActive = 'hub' | 'auth-monitor' | 'report-monitor' | 'admin'
+ *   $navActive = 'hub' | 'report-monitor' | 'hoster-db' | 'admin'
  * Requires: currentUser() available (auth.php already included)
  */
 $_navUser   = currentUser();
@@ -92,7 +92,6 @@ $_navActive = $navActive ?? '';
     </a>
     <div class="site-nav-links">
         <a href="/" class="site-nav-link <?= $_navActive === 'hub' ? 'active active-blue' : '' ?>">Hub</a>
-        <a href="/auth-monitor/" class="site-nav-link <?= $_navActive === 'auth-monitor' ? 'active active-blue' : '' ?>">Auth Monitor</a>
         <a href="/report-monitor/" class="site-nav-link <?= $_navActive === 'report-monitor' ? 'active active-blue' : '' ?>">Reports</a>
         <a href="/hoster-db/" class="site-nav-link <?= $_navActive === 'hoster-db' ? 'active active-blue' : '' ?>">Hoster-DB</a>
         <?php if ($_navUser && $_navUser['role'] === 'admin'): ?>

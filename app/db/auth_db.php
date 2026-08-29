@@ -36,37 +36,6 @@ require_once __DIR__ . '/mysql_db.php';
             created_at DATETIME    DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES platform_users(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
-
-        "CREATE TABLE IF NOT EXISTS platform_servers (
-            id            INT AUTO_INCREMENT PRIMARY KEY,
-            name          VARCHAR(120) NOT NULL,
-            hostname      VARCHAR(255),
-            ip            VARCHAR(45),
-            token_hash    VARCHAR(64)  UNIQUE NOT NULL,
-            active        TINYINT(1)   NOT NULL DEFAULT 1,
-            auto_block    TINYINT(1)   NOT NULL DEFAULT 0,
-            registered_at DATETIME     DEFAULT CURRENT_TIMESTAMP,
-            last_contact  DATETIME
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
-
-        "CREATE TABLE IF NOT EXISTS platform_reg_tokens (
-            id         INT AUTO_INCREMENT PRIMARY KEY,
-            token_hash VARCHAR(64) UNIQUE NOT NULL,
-            created_at DATETIME   DEFAULT CURRENT_TIMESTAMP,
-            expires_at DATETIME   NOT NULL,
-            used       TINYINT(1) NOT NULL DEFAULT 0
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
-
-        // Tracks generated auth-monitor email reports (duplicate detection)
-        "CREATE TABLE IF NOT EXISTS auth_reports (
-            id           INT AUTO_INCREMENT PRIMARY KEY,
-            report_type  VARCHAR(20)  NOT NULL,
-            period_start DATE         NOT NULL,
-            period_end   DATE         NOT NULL,
-            ip_filter    VARCHAR(45)  NOT NULL DEFAULT '',
-            created_at   DATETIME     DEFAULT CURRENT_TIMESTAMP,
-            INDEX idx_lookup (report_type, period_start, period_end, ip_filter)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
     ] as $sql) {
         $db->exec($sql);
     }
@@ -114,6 +83,10 @@ function updateUserPassword(int $id, string $password): void {
 
 function toggleUserActive(int $id): void {
     getMySQL()->prepare("UPDATE platform_users SET active = 1 - active WHERE id = ?")->execute([$id]);
+}
+
+function deleteUser(int $id): void {
+    getMySQL()->prepare("DELETE FROM platform_users WHERE id = ?")->execute([$id]);
 }
 
 function updateLastLogin(int $id): void {
@@ -173,68 +146,4 @@ function deleteRememberToken(string $token): void {
 
 function deleteAllUserTokens(int $userId): void {
     getMySQL()->prepare("DELETE FROM platform_remember_tokens WHERE user_id = ?")->execute([$userId]);
-}
-
-// ── Servers ───────────────────────────────────────────────────────────────────
-
-function getAllServers(): array {
-    return getMySQL()
-        ->query("SELECT * FROM platform_servers ORDER BY registered_at ASC")
-        ->fetchAll(PDO::FETCH_ASSOC);
-}
-
-function getServerByToken(string $token): ?array {
-    $hash = hash('sha256', $token);
-    $stmt = getMySQL()->prepare("SELECT * FROM platform_servers WHERE token_hash = ? AND active = 1");
-    $stmt->execute([$hash]);
-    return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-}
-
-function registerServer(string $name, string $hostname, string $ip, bool $autoBlock): string {
-    $token = bin2hex(random_bytes(32));
-    $hash  = hash('sha256', $token);
-    getMySQL()
-        ->prepare("INSERT INTO platform_servers (name, hostname, ip, token_hash, auto_block) VALUES (?, ?, ?, ?, ?)")
-        ->execute([$name, $hostname, $ip, $hash, $autoBlock ? 1 : 0]);
-    return $token;
-}
-
-function touchServerContact(string $token): void {
-    $hash = hash('sha256', $token);
-    getMySQL()
-        ->prepare("UPDATE platform_servers SET last_contact = NOW() WHERE token_hash = ?")
-        ->execute([$hash]);
-}
-
-function toggleServerActive(int $id): void {
-    getMySQL()->prepare("UPDATE platform_servers SET active = 1 - active WHERE id = ?")->execute([$id]);
-}
-
-function deleteServer(int $id): void {
-    getMySQL()->prepare("DELETE FROM platform_servers WHERE id = ?")->execute([$id]);
-}
-
-// ── Registration tokens ───────────────────────────────────────────────────────
-
-function createRegistrationToken(): string {
-    $token   = bin2hex(random_bytes(16));
-    $hash    = hash('sha256', $token);
-    $expires = date('Y-m-d H:i:s', strtotime('+1 hour'));
-    getMySQL()
-        ->prepare("INSERT INTO platform_reg_tokens (token_hash, expires_at) VALUES (?, ?)")
-        ->execute([$hash, $expires]);
-    return $token;
-}
-
-function validateAndConsumeRegToken(string $token): bool {
-    $hash = hash('sha256', $token);
-    $db   = getMySQL();
-    $stmt = $db->prepare(
-        "SELECT id FROM platform_reg_tokens WHERE token_hash = ? AND used = 0 AND expires_at > NOW()"
-    );
-    $stmt->execute([$hash]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$row) return false;
-    $db->prepare("UPDATE platform_reg_tokens SET used = 1 WHERE id = ?")->execute([$row['id']]);
-    return true;
 }

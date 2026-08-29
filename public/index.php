@@ -6,19 +6,16 @@ $navActive = 'hub';
 $year      = date('Y');
 
 // ── Live-Statistiken ──────────────────────────────────────────────────────────
-$stats = ['attacks' => 0, 'reports' => 0, 'servers' => 0, 'hosters' => 0];
+$stats = ['reports' => 0, 'open' => 0, 'awaiting' => 0, 'hosters' => 0];
 try {
-    require_once __DIR__ . '/../app/db/mysql_db.php';
+    require_once __DIR__ . '/../app/db/abuse_db.php';
     $db = getMySQL();
 
-    // SSH Angriffe gesamt (daily_stats + heute live)
-    $attacks = (int)$db->query("SELECT COALESCE(SUM(fail_count),0) FROM daily_stats")->fetchColumn();
-    $live    = (int)$db->query("SELECT COALESCE(SUM(event_type IN ('FAILED','INVALID_USER')),0) FROM auth_events WHERE log_date = CURDATE()")->fetchColumn();
-    $stats['attacks'] = $attacks + $live;
-
-    $stats['reports'] = (int)$db->query("SELECT COUNT(*) FROM abuse_reports")->fetchColumn();
-    $stats['servers'] = (int)$db->query("SELECT COUNT(*) FROM platform_servers WHERE active = 1")->fetchColumn();
-    $stats['hosters'] = (int)$db->query("SELECT COUNT(*) FROM hoster_contacts")->fetchColumn();
+    $closed = "'" . implode("','", ABUSE_CLOSED_STATUSES) . "'";
+    $stats['reports']  = (int)$db->query("SELECT COUNT(*) FROM abuse_reports")->fetchColumn();
+    $stats['open']     = (int)$db->query("SELECT COUNT(*) FROM abuse_reports WHERE status NOT IN ($closed)")->fetchColumn();
+    $stats['awaiting'] = (int)$db->query("SELECT COUNT(*) FROM abuse_reports WHERE status IN ('Gesendet','Wartet auf Antwort')")->fetchColumn();
+    $stats['hosters']  = (int)$db->query("SELECT COUNT(*) FROM hoster_contacts")->fetchColumn();
 } catch (Exception $e) {
     // Tabellen noch nicht vorhanden — Defaults bleiben 0
 }
@@ -109,9 +106,8 @@ h1 span {
 .hero-sub { font-size: 17px; color: var(--muted); max-width: 520px; margin: 0 auto 48px; line-height: 1.7; }
 
 /* ── Cards ── */
-.cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-bottom: 56px; }
+.cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-bottom: 56px; }
 @media (max-width: 760px) { .cards { grid-template-columns: 1fr; } }
-@media (max-width: 1000px) and (min-width: 761px) { .cards { grid-template-columns: 1fr 1fr; } }
 
 .card {
     background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
@@ -123,10 +119,8 @@ h1 span {
 .card::before { content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity .2s; border-radius: var(--radius); }
 .card:hover { transform: translateY(-3px); border-color: var(--border-hi); }
 .card:hover::before { opacity: 1; }
-.card-auth::before    { background: var(--accent-glow); }
 .card-report::before  { background: var(--red-glow); }
 .card-hoster::before  { background: var(--green-glow); }
-.card-auth:hover   { box-shadow: 0 0 40px rgba(59,130,246,.12); }
 .card-report:hover { box-shadow: 0 0 40px rgba(239,68,68,.1); }
 .card-hoster:hover { box-shadow: 0 0 40px rgba(34,197,94,.1); }
 
@@ -135,11 +129,9 @@ h1 span {
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0; position: relative; z-index: 1;
 }
-.card-auth   .card-icon { background: rgba(59,130,246,.15); }
 .card-report .card-icon { background: rgba(239,68,68,.12); }
 .card-hoster .card-icon { background: rgba(34,197,94,.12); }
 .card-icon svg { width: 22px; height: 22px; }
-.card-auth   .card-icon svg { stroke: #60a5fa; }
 .card-report .card-icon svg { stroke: #f87171; }
 .card-hoster .card-icon svg { stroke: #4ade80; }
 
@@ -199,37 +191,15 @@ footer {
             <span class="hero-label-dot"></span>
             Security Monitoring
         </div>
-        <h1>Zentrales <span>Abuse &amp;<br>Security</span> Dashboard</h1>
+        <h1>Zentrales <span>Abuse</span> Dashboard</h1>
         <p class="hero-sub">
-            Echtzeit-Überwachung von Authentifizierungsangriffen,
-            Verwaltung von Abuse-Meldungen und Hoster-Kontaktdaten für max1021.de.
+            Abuse-Meldungen erstellen, per E-Mail an den Hoster verschicken,
+            Antworten verfolgen &ndash; plus Hoster-Kontaktdatenbank für max1021.de.
         </p>
     </div>
 
     <!-- Cards -->
     <div class="cards">
-
-        <a class="card card-auth" href="auth-monitor/">
-            <div class="card-arrow">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
-            </div>
-            <div class="card-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/>
-                    <line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>
-                </svg>
-            </div>
-            <div class="card-title">Auth Monitor</div>
-            <div class="card-desc">
-                Echtzeit-Dashboard für SSH-Angriffe. Top-IPs, Herkunftsländer,
-                Hoster-Analyse und Angriffsverteilung mit automatischem Refresh.
-            </div>
-            <div class="card-tags">
-                <span class="tag tag-blue">SSH Brute Force</span>
-                <span class="tag tag-purple">IP-Analyse</span>
-                <span class="tag tag-gray">Live Events</span>
-            </div>
-        </a>
 
         <a class="card card-report" href="report-monitor/">
             <div class="card-arrow">
@@ -243,12 +213,12 @@ footer {
             </div>
             <div class="card-title">Report Monitor</div>
             <div class="card-desc">
-                Verwaltung von Abuse-Meldungen mit vollständigem Verlauf.
-                Status-Tracking, Notizen und Kommunikationshistorie pro Angreifer.
+                Abuse-Report als Entwurf erstellen, an die Abuse-Adresse des Hosters
+                mailen und Antworten mit Reportnummer automatisch dem Fall zuordnen.
             </div>
             <div class="card-tags">
-                <span class="tag tag-red">Abuse Reports</span>
-                <span class="tag tag-green">Status-Tracking</span>
+                <span class="tag tag-red">E-Mail-Versand</span>
+                <span class="tag tag-green">Antwort-Tracking</span>
                 <span class="tag tag-purple">Verlauf</span>
             </div>
         </a>
@@ -283,16 +253,16 @@ footer {
     <!-- Live-Stats -->
     <div class="stats">
         <div class="stat">
-            <div class="stat-num" style="color:#f87171"><?= fmt($stats['attacks']) ?></div>
-            <div class="stat-label">SSH-Angriffe</div>
-        </div>
-        <div class="stat">
             <div class="stat-num" style="color:#fca5a5"><?= fmt($stats['reports']) ?></div>
-            <div class="stat-label">Abuse-Reports</div>
+            <div class="stat-label">Reports gesamt</div>
         </div>
         <div class="stat">
-            <div class="stat-num" style="color:#60a5fa"><?= $stats['servers'] ?></div>
-            <div class="stat-label">Server aktiv</div>
+            <div class="stat-num" style="color:#fdba74"><?= fmt($stats['open']) ?></div>
+            <div class="stat-label">Offen</div>
+        </div>
+        <div class="stat">
+            <div class="stat-num" style="color:#60a5fa"><?= fmt($stats['awaiting']) ?></div>
+            <div class="stat-label">Wartet auf Antwort</div>
         </div>
         <div class="stat">
             <div class="stat-num" style="color:#4ade80"><?= $stats['hosters'] ?></div>
