@@ -80,6 +80,34 @@ $_navActive = $navActive ?? '';
     white-space: nowrap;
 }
 .site-nav-logout:hover { color: #f87171; border-color: rgba(239,68,68,.3); }
+
+/* ── Mobil ── */
+@media (max-width: 640px) {
+    .site-nav {
+        height: auto;
+        min-height: 46px;
+        padding: 6px 12px;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    .site-nav-logo { margin-right: 0; }
+    .site-nav-brand { display: none; }
+    .site-nav-user  { display: none; }
+    .site-nav-right { margin-left: auto; }
+    .site-nav-links {
+        order: 3;
+        width: 100%;
+        flex: none;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        gap: 4px;
+        padding-bottom: 2px;
+    }
+    .site-nav-links::-webkit-scrollbar { display: none; }
+    .site-nav-link   { font-size: 14px; padding: 8px 14px; }
+    .site-nav-logout { font-size: 13px; padding: 7px 12px; }
+}
 </style>
 
 <nav class="site-nav">

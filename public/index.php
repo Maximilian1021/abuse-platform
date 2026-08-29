@@ -174,6 +174,14 @@ footer {
 .footer-left  { font-size: 13px; color: var(--muted); }
 .footer-left strong { color: var(--subtle); }
 .footer-right { font-size: 12px; color: #334155; }
+
+/* ── Mobil ── */
+@media (max-width: 600px) {
+    .wrap { padding: 0 16px; }
+    .hero { padding: 44px 0 32px; }
+    .card { padding: 20px; }
+    .stat { padding: 14px 16px; }
+}
 </style>
 </head>
 <body>

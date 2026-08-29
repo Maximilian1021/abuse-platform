@@ -62,7 +62,7 @@ body::before {
     pointer-events: none; z-index: 0;
 }
 
-.app { display: flex; flex-direction: column; height: 100vh; position: relative; z-index: 1; }
+.app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; position: relative; z-index: 1; }
 .body { display: flex; flex: 1; overflow: hidden; }
 
 .sidebar { width: 340px; min-width: 280px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
@@ -202,7 +202,16 @@ select option { background: var(--card); }
 
 @media (max-width: 800px) {
     .body { flex-direction: column; }
-    .sidebar { width: 100%; height: 240px; min-width: unset; }
+    .sidebar { width: 100%; height: 42vh; height: 42dvh; min-height: 190px; min-width: unset; border-right: none; border-bottom: 1px solid var(--border); }
+    .detail-head { padding: 12px 14px; }
+    .dsection, .log-section { padding: 14px; }
+    .detail-actions { margin-left: 0; }
+    .info-grid { grid-template-columns: 1fr 1fr; }
+    .draft-box textarea { min-height: 160px; }
+    .modal { padding: 18px; }
+}
+@media (max-width: 460px) {
+    .info-grid { grid-template-columns: 1fr; }
 }
 </style>
 </head>

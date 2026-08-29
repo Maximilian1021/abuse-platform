@@ -173,6 +173,17 @@ select option { background: var(--card); }
 
 /* Log */
 code { background: var(--bg); padding: 2px 7px; border-radius: 4px; font-family: monospace; color: #93c5fd; font-size: 12px; }
+
+/* ── Mobil ── */
+@media (max-width: 640px) {
+    .wrap { padding: 20px 14px; }
+    .section { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { min-width: 680px; }
+    th, td { padding: 8px 12px; }
+    .tabs { overflow-x: auto; scrollbar-width: none; }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab-btn { white-space: nowrap; }
+}
 </style>
 </head>
 <body>

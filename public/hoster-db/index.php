@@ -175,6 +175,16 @@ code { background: rgba(59,130,246,.08); border: 1px solid rgba(59,130,246,.15);
 
 /* Delete confirm */
 .del-form { display: inline; }
+
+/* ── Mobil ── */
+@media (max-width: 640px) {
+    .wrap { padding: 18px 14px; }
+    .section { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { min-width: 620px; }
+    th, td { padding: 8px 10px; }
+    .modal { padding: 20px; }
+    .modal div[style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
+}
 </style>
 </head>
 <body>
