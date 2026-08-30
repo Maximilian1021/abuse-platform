@@ -14,7 +14,7 @@ Internes Tool zum Erstellen, Versenden und Nachverfolgen von Abuse-Meldungen.
 ## Ablauf eines Reports
 
 1. **Neu** im Report Monitor: IP, Hoster (aus der Hoster-DB), Grund, Belege/Log-Auszug. Der Report bekommt eine Nummer im Format `PREFIX-JAHR-NUMMER` (z.B. `R-26-0042`), Status `Entwurf`. Das `PREFIX` ist frei über `report_ref_prefix` in `app/config/config.php` einstellbar (leer erlaubt → `26-0042`); Jahr und laufende Nummer (pro Kalenderjahr) vergibt das System automatisch.
-2. **Entwurf erzeugen**: Vorlage wählen → Betreff + Text werden vorbefüllt (Platzhalter: IP, Reportnummer, Belege, Datum …). Frei editierbar.
+2. **Entwurf erzeugen**: Vorlage wählen → Betreff + Text werden vorbefüllt (Platzhalter: IP, Reportnummer, Belege, Datum …). Frei editierbar. Die Vorlagen selbst pflegt ein Admin unter **Admin → Vorlagen** (Tabelle `abuse_mail_templates`; die eingebauten Vorlagen dienen als Seed/Fallback, `generic` ist nicht löschbar).
 3. **Report senden**: Mail geht über das eigene Abuse-Postfach (SMTP) an die Abuse-Adresse des Hosters. Die Reportnummer steht im Betreff (`… [R-26-0042]`), eine eigene `Message-ID` wird gesetzt.
 4. **Antworten abholen**: Ein Cron-Job (`app/mail/imap_poll.php`) prüft das Postfach per IMAP. Eingehende Mails werden zugeordnet über
    1. `In-Reply-To` / `References` (bekannte Message-ID),
@@ -71,7 +71,7 @@ cp app/config/config.example.php app/config/config.php
 'reporter_name' => 'Vorname Nachname',
 'report_ref_prefix' => 'R',   // Reportnummer PREFIX-JAHR-NUMMER  ->  R-26-0042  (leer -> 26-0042)
 
-// Branding (für eigene Nutzung)
+// Branding (Defaults – live editierbar unter Admin -> Branding)
 'site_name' => 'Abuse Platform',      // Nav-Marke + Seitentitel
 'site_domain' => 'example.com',        // Footer + Titel (leer = weglassen)
 'footer_html' => '',                   // eigener Footer (HTML erlaubt); leer = auto
@@ -79,13 +79,25 @@ cp app/config/config.example.php app/config/config.php
 'mail_org' => 'example.com',            // "<mail_org> infrastructure" / "<mail_org> Abuse Team" in den Mail-Vorlagen
 ```
 
-Die MySQL-Tabellen (`platform_users`, `abuse_reports`, `abuse_messages`, `abuse_log_entries`,
-`hoster_contacts` …) werden beim ersten Seitenaufruf idempotent angelegt.
+Die Branding-Werte (`site_name`, `site_domain`, `footer_html`, `login_note`, `mail_org`,
+`reporter_name`, `abuse_from_name`) lassen sich nach dem ersten Login unter
+**Admin → Branding** in der Oberfläche ändern; sie werden in der Tabelle `platform_settings`
+gespeichert und überschreiben die Datei-Defaults. Zugangsdaten, `abuse_from_email` und
+`report_ref_prefix` bleiben ausschließlich in `app/config/config.php`.
+
+Die MySQL-Tabellen (`platform_users`, `platform_settings`, `abuse_mail_templates`,
+`abuse_reports`, `abuse_messages`, `abuse_log_entries`, `hoster_contacts` …) werden beim
+ersten Seitenaufruf idempotent angelegt.
 
 ### 3. Ersteinrichtung
 
 `https://abuse.example.com/setup.php` aufrufen und den ersten **Admin**-Account anlegen.
 Weitere Benutzer (`admin` / `viewer`) danach im Admin-Panel.
+
+Jeder Benutzer kann unter **Profil** (Klick auf den Namen in der Navigation) einen
+Anzeigenamen hinterlegen. Dieser Name erscheint zusammen mit der Rolle in der Signatur
+der Abuse-Mails seiner Reports (`{reporter}` → z.B. `Maximilian P. (Administrator)`);
+ohne Anzeigename greift der Login-Name, sonst `reporter_name` aus der Config.
 
 ### 4. IMAP-Poller als Cron
 

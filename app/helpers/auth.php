@@ -53,9 +53,10 @@ function currentUser(): ?array {
         $user = getUserByRememberToken($_COOKIE[AUTH_COOKIE_NAME]);
         if ($user) {
             $_SESSION[AUTH_SESSION_KEY] = [
-                'id'       => $user['id'],
-                'username' => $user['username'],
-                'role'     => $user['role'],
+                'id'        => $user['id'],
+                'username'  => $user['username'],
+                'full_name' => $user['full_name'] ?? '',
+                'role'      => $user['role'],
             ];
             $_SESSION['auth_last_activity'] = time();
             updateLastLogin($user['id']);
@@ -96,6 +97,21 @@ function canWrite(): bool {
     return $role !== 'viewer';
 }
 
+// Anzeigename einer Rolle (UI-Badges, Mail-Signatur)
+function roleLabel(string $role): string {
+    return [
+        'admin'     => 'Administrator',
+        'moderator' => 'Moderator',
+        'viewer'    => 'Viewer',
+    ][$role] ?? ($role !== '' ? ucfirst($role) : '');
+}
+
+// Anzeigename des aktuellen Users (Profil-Name, sonst Login-Name)
+function currentUserDisplayName(): string {
+    $u = currentUser() ?? [];
+    return trim((string)($u['full_name'] ?? '')) ?: (string)($u['username'] ?? '');
+}
+
 // ── Login / Logout ────────────────────────────────────────────────────────────
 
 function authLogin(string $username, string $password, bool $remember, string $ip): array {
@@ -120,9 +136,10 @@ function authLogin(string $username, string $password, bool $remember, string $i
     startSecureSession();
     session_regenerate_id(true);
     $_SESSION[AUTH_SESSION_KEY] = [
-        'id'       => $user['id'],
-        'username' => $user['username'],
-        'role'     => $user['role'],
+        'id'        => $user['id'],
+        'username'  => $user['username'],
+        'full_name' => $user['full_name'] ?? '',
+        'role'      => $user['role'],
     ];
     $_SESSION['auth_last_activity'] = time();
 

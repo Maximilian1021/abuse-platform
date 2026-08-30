@@ -326,6 +326,13 @@ function fmt(dt) {
     return d.toLocaleDateString('de-DE') + ' ' + d.toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit'});
 }
 function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+const ROLE_LABELS = { admin: 'Administrator', moderator: 'Moderator', viewer: 'Viewer' };
+function reporterLabel(r) {
+    const name = (r.created_by_full_name || r.created_by_name || '').trim();
+    if (!name) return '';
+    const role = ROLE_LABELS[r.created_by_role] || (r.created_by_role || '');
+    return role ? `${name} (${role})` : name;
+}
 function badgeHtml(status) {
     const c = STATUS_COLORS[status] || STATUS_COLORS['Ignoriert'];
     return `<span class="sbadge" style="background:${c.bg};color:${c.text};border-color:${c.border}">${esc(status)}</span>`;
@@ -416,7 +423,7 @@ function renderDetail() {
                 <div class="info-field"><label>Abuse-E-Mail</label><div class="val mono">${esc(r.hoster_email || '—')}</div></div>
                 <div class="info-field"><label>Grund</label><div class="val">${esc(r.reason || '—')}</div></div>
                 <div class="info-field"><label>Betreff</label><div class="val">${esc(r.subject || '—')}</div></div>
-                <div class="info-field"><label>Angelegt</label><div class="val">${fmt(r.created_at)}${r.created_by_name ? ' · ' + esc(r.created_by_name) : ''}</div></div>
+                <div class="info-field"><label>Angelegt</label><div class="val">${fmt(r.created_at)}${reporterLabel(r) ? ' · ' + esc(reporterLabel(r)) : ''}</div></div>
                 <div class="info-field"><label>Gesendet</label><div class="val">${fmt(r.sent_at)}</div></div>
                 <div class="info-field"><label>Letzte Antwort</label><div class="val">${fmt(r.last_inbound_at)}</div></div>
             </div>

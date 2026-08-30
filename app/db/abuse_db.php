@@ -119,6 +119,8 @@ function getAllReports(): array {
             r.*,
             h.name      AS hoster_name,
             u.username   AS created_by_name,
+            u.full_name  AS created_by_full_name,
+            u.role       AS created_by_role,
             u2.username  AS updated_by_name,
             (SELECT COUNT(*) FROM abuse_log_entries WHERE report_id = r.id) AS log_count,
             (SELECT COUNT(*) FROM abuse_messages    WHERE report_id = r.id) AS msg_count
@@ -139,6 +141,8 @@ function getReport(int $id): ?array {
             h.abuse_url   AS hoster_url,
             h.method      AS hoster_method,
             u.username     AS created_by_name,
+            u.full_name    AS created_by_full_name,
+            u.role         AS created_by_role,
             u2.username    AS updated_by_name
         FROM abuse_reports r
         LEFT JOIN hoster_contacts h ON h.id = r.hoster_id

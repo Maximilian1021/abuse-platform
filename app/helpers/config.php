@@ -18,13 +18,50 @@ function appConfig(): array {
     return $cfg;
 }
 
-/** Einzelwert mit Default. */
+/**
+ * Keys, die ein Admin über die GUI (Tabelle platform_settings) überschreiben darf.
+ * Alles andere (DB-/SMTP-/IMAP-Zugang, Absender-Adresse, Reportnummer-Prefix)
+ * bleibt bewusst datei-only.
+ */
+const CONFIG_DB_KEYS = [
+    'site_name', 'site_domain', 'footer_html',
+    'login_note', 'mail_org', 'reporter_name', 'abuse_from_name',
+];
+
+/**
+ * Overlay aus platform_settings — einmalig pro Request, best effort.
+ * Fehlt die Tabelle oder ist die DB nicht erreichbar, greift lautlos die config.php.
+ */
+function configOverlay(): array {
+    static $overlay = null;
+    if ($overlay !== null) return $overlay;
+    $overlay = [];
+    try {
+        if (function_exists('getMySQL')) {
+            $rows = getMySQL()
+                ->query("SELECT `key`, `value` FROM platform_settings")
+                ->fetchAll(PDO::FETCH_KEY_PAIR);
+            foreach ($rows as $k => $v) {
+                if (in_array($k, CONFIG_DB_KEYS, true)) $overlay[$k] = $v;
+            }
+        }
+    } catch (\Throwable $e) {
+        $overlay = [];
+    }
+    return $overlay;
+}
+
+/** Einzelwert mit Default. GUI-Einstellung (platform_settings) schlägt config.php. */
 function cfg(string $key, $default = null) {
+    if (in_array($key, CONFIG_DB_KEYS, true)) {
+        $ov = configOverlay();
+        if (array_key_exists($key, $ov)) return $ov[$key];
+    }
     $c = appConfig();
     return $c[$key] ?? $default;
 }
 
-// ── Branding (alles über app/config/config.php anpassbar) ─────────────────────
+// ── Branding (Defaults in config.php, live editierbar unter Admin → Branding) ──
 
 /** Produktname (Nav-Marke, Seitentitel). */
 function siteName(): string {
@@ -57,8 +94,8 @@ function pageTitle(string $section = ''): string {
 }
 
 /**
- * Footer-Inhalt als HTML. 'footer_html' in der Config überschreibt alles
- * (HTML erlaubt, gilt als vertrauenswürdig – nur Admin editiert die Config).
+ * Footer-Inhalt als HTML. 'footer_html' überschreibt alles
+ * (HTML erlaubt, gilt als vertrauenswürdig – nur Admin editiert es).
  * Sonst automatisch aus site_name + site_domain.
  */
 function footerHtml(): string {

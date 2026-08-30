@@ -67,7 +67,10 @@ $_navActive = $navActive ?? '';
     border-radius: 6px;
     padding: 4px 9px;
     white-space: nowrap;
+    text-decoration: none;
+    transition: color .15s, border-color .15s;
 }
+.site-nav-user:hover { color: #e2e8f0; border-color: #2e3f60; }
 .site-nav-logout {
     font-size: 12px;
     color: #64748b;
@@ -129,7 +132,7 @@ $_navActive = $navActive ?? '';
     </div>
     <div class="site-nav-right">
         <?php if ($_navUser): ?>
-        <span class="site-nav-user"><?= htmlspecialchars($_navUser['username']) ?></span>
+        <a href="/profile.php" class="site-nav-user" title="Profil bearbeiten"><?= htmlspecialchars(trim((string)($_navUser['full_name'] ?? '')) ?: $_navUser['username']) ?></a>
         <?php endif; ?>
         <a href="/logout.php" class="site-nav-logout">Abmelden</a>
     </div>

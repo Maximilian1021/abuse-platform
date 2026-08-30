@@ -36,9 +36,19 @@ require_once __DIR__ . '/mysql_db.php';
             created_at DATETIME    DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES platform_users(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+
+        "CREATE TABLE IF NOT EXISTS platform_settings (
+            `key`      VARCHAR(64) NOT NULL PRIMARY KEY,
+            `value`    TEXT        NULL,
+            updated_at DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            updated_by INT         NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
     ] as $sql) {
         $db->exec($sql);
     }
+
+    // Profil-Anzeigename (für Mail-Signatur etc.)
+    ensureColumn($db, 'platform_users', 'full_name', 'full_name VARCHAR(120) NULL AFTER username');
 
     // Cleanup expired remember tokens
     $db->exec("DELETE FROM platform_remember_tokens WHERE expires_at < NOW()");
@@ -52,8 +62,15 @@ function userCount(): int {
 
 function getAllUsers(): array {
     return getMySQL()
-        ->query("SELECT id, username, role, active, created_at, last_login FROM platform_users ORDER BY created_at ASC")
+        ->query("SELECT id, username, full_name, role, active, created_at, last_login FROM platform_users ORDER BY created_at ASC")
         ->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function updateUserFullName(int $id, string $fullName): void {
+    $fullName = trim($fullName);
+    getMySQL()
+        ->prepare("UPDATE platform_users SET full_name = ? WHERE id = ?")
+        ->execute([$fullName !== '' ? $fullName : null, $id]);
 }
 
 function getUserById(int $id): ?array {

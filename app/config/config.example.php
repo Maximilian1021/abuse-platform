@@ -30,10 +30,11 @@ return [
     // ── Absender / Meta ──────────────────────────────────────────────────────
     'abuse_from_email'  => 'abuse@example.com',
     'abuse_from_name'   => 'example.com Abuse',
-    'reporter_name'     => 'Vorname Nachname',
+    'reporter_name'     => 'Vorname Nachname',   // Fallback für die Mail-Signatur, falls der Report-Ersteller keinen Profil-Anzeigenamen hat
     'report_ref_prefix' => 'R',   // Reportnummer: PREFIX-JAHR-NUMMER  ->  R-26-0042  (leer = 26-0042)
 
-    // ── Branding (für eigene Nutzung anpassen) ───────────────────────────────
+    // ── Branding (Defaults; live editierbar unter Admin → Branding) ──────────
+    //    Die Werte hier greifen, solange sie in der GUI nicht überschrieben wurden.
     'site_name'   => 'Abuse Platform',      // Nav-Marke + Seitentitel
     'site_domain' => 'example.com',         // Footer + Titel (leer = weglassen)
     'footer_html' => '',                    // optional: eigener Footer (HTML erlaubt); leer = auto aus site_name + site_domain

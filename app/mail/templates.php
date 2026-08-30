@@ -4,12 +4,50 @@ define('ABUSE_TEMPLATES_LOADED', true);
 
 require_once __DIR__ . '/../helpers/config.php';
 
+/** Platzhalter, die in Betreff/Body ersetzt werden (für die UI-Legende). */
+const ABUSE_TEMPLATE_PLACEHOLDERS = ['ref', 'ip', 'reason', 'reporter', 'date', 'evidence', 'hoster', 'org'];
+
 /**
- * Vorlagen für Abuse-Mails. Platzhalter:
+ * Aktive Vorlagen für Abuse-Mails: [key => ['label','subject','body']].
+ * Quelle ist die Tabelle abuse_mail_templates (editierbar unter Admin -> Vorlagen);
+ * fehlt die DB/Tabelle, greifen die Code-Defaults aus abuseTemplateDefaults().
+ * Platzhalter:
  *   {ref} {ip} {reason} {reporter} {date} {evidence} {hoster} {org}
- * 'subject' und 'body' werden mit fillTemplate() befüllt.
+ * {reporter} = Profilname + Rolle des Report-Erstellers
+ *              (Fallback: Login-Name, dann 'reporter_name' aus der Config).
  */
 function abuseTemplates(): array {
+    static $cache = null;
+    if ($cache !== null) return $cache;
+
+    $defaults = abuseTemplateDefaults();
+    try {
+        require_once __DIR__ . '/../db/templates_db.php';
+        seedMailTemplatesIfEmpty($defaults);
+        $rows = getMailTemplatesRaw();
+        if ($rows) {
+            $out = [];
+            foreach ($rows as $key => $r) {
+                $out[$key] = [
+                    'label'   => $r['label'],
+                    'subject' => $r['subject'],
+                    'body'    => $r['body'],
+                ];
+            }
+            // generic ist der harte Fallback in buildDraft() — immer vorhalten
+            if (!isset($out['generic']) && isset($defaults['generic'])) {
+                $out['generic'] = $defaults['generic'];
+            }
+            return $cache = $out;
+        }
+    } catch (\Throwable $e) {
+        // DB nicht erreichbar -> Code-Defaults
+    }
+    return $cache = $defaults;
+}
+
+/** Eingebaute Standard-Vorlagen (Seed für die DB + Fallback). */
+function abuseTemplateDefaults(): array {
     return [
         'ssh' => [
             'label'   => 'SSH Brute Force',
@@ -94,6 +132,25 @@ TXT,
     ];
 }
 
+/**
+ * Signaturzeile für {reporter}: "Profilname (Rolle)".
+ * Reihenfolge: full_name > Login-Name > 'reporter_name' aus der Config.
+ * Rolle wird angehängt, wenn bekannt (roleLabel() aus auth.php).
+ */
+function reporterSignature(array $report): string {
+    $name = trim((string)($report['created_by_full_name'] ?? ''))
+        ?: trim((string)($report['created_by_name'] ?? ''))
+        ?: trim((string) cfg('reporter_name', ''));
+
+    $role = '';
+    if (function_exists('roleLabel')) {
+        $role = roleLabel((string)($report['created_by_role'] ?? ''));
+    }
+
+    if ($name !== '' && $role !== '') return "{$name} ({$role})";
+    return $name;
+}
+
 /** Ersetzt {platzhalter} im String. */
 function fillTemplate(string $tpl, array $vars): string {
     return strtr($tpl, array_combine(
@@ -114,7 +171,7 @@ function buildDraft(array $report, string $templateKey = 'generic'): array {
         'ref'      => $report['ref'] ?: '',
         'ip'       => $report['ip'] ?: '(unbekannt)',
         'reason'   => trim($report['reason'] ?? '') ?: 'abusive activity',
-        'reporter' => (string) cfg('reporter_name', ''),
+        'reporter' => reporterSignature($report),
         'date'     => date('Y-m-d H:i') . ' UTC',
         'evidence' => trim($report['note'] ?? '') ?: '(bitte Log-Auszug / Belege hier einfügen)',
         'hoster'   => $report['hoster_name'] ?? '',

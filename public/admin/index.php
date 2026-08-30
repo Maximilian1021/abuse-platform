@@ -1,14 +1,91 @@
 <?php
 require_once __DIR__ . '/../../app/helpers/auth.php';
+require_once __DIR__ . '/../../app/db/settings_db.php';
+require_once __DIR__ . '/../../app/db/templates_db.php';
+require_once __DIR__ . '/../../app/mail/templates.php';
 requireRole('admin');
+
+seedMailTemplatesIfEmpty(abuseTemplateDefaults());
 
 $me        = currentUser();
 $navActive = 'admin';
 $message   = '';
 $msgType   = '';
 
+// GUI-editierbare Branding-Keys (Defaults kommen aus app/config/config.php)
+$BRAND_FIELDS = [
+    'site_name'       => ['label' => 'Produktname',                    'ph' => 'Abuse Platform',        'max' => 80,   'type' => 'text',
+                          'help'  => 'Marke in der Navigation und im Seitentitel.'],
+    'site_domain'     => ['label' => 'Domain / Organisation',          'ph' => 'leer = weglassen',      'max' => 120,  'type' => 'text',
+                          'help'  => 'Erscheint im Footer und im Seitentitel.'],
+    'mail_org'        => ['label' => 'Org-Name in Mail-Vorlagen',      'ph' => 'leer = Domain',         'max' => 120,  'type' => 'text',
+                          'help'  => 'Wird in Abuse-Vorlagen als "<Org> infrastructure" / "<Org> Abuse Team" eingesetzt.'],
+    'abuse_from_name' => ['label' => 'Absender-Anzeigename (Mail)',    'ph' => 'z.B. example.com Abuse', 'max' => 120,  'type' => 'text',
+                          'help'  => 'From-Name der versendeten Abuse-Mails. Die Absenderadresse bleibt in der config.php.'],
+    'reporter_name'   => ['label' => 'Melder-Name (Signatur-Fallback)','ph' => 'Vorname Nachname',      'max' => 120,  'type' => 'text',
+                          'help'  => 'Fällt in der Mail-Signatur ein, wenn kein Ersteller-Name verfügbar ist.'],
+    'login_note'      => ['label' => 'Login-Fußzeile',                 'ph' => 'Internal Use Only',     'max' => 120,  'type' => 'text',
+                          'help'  => 'Kleiner Hinweistext auf der Anmeldeseite.'],
+    'footer_html'     => ['label' => 'Footer (HTML erlaubt)',          'ph' => 'leer = automatisch aus Produktname + Domain', 'max' => 2000, 'type' => 'textarea',
+                          'help'  => 'Überschreibt den automatischen Footer. HTML wird ungefiltert ausgegeben – nur Admins bearbeiten dieses Feld.'],
+];
+
 // ── Actions ───────────────────────────────────────────────────────────────────
 $action = $_POST['action'] ?? '';
+
+if ($action === 'save_settings') {
+    $kv = [];
+    foreach ($BRAND_FIELDS as $key => $f) {
+        $val = trim((string) ($_POST[$key] ?? ''));
+        if ($key !== 'footer_html') $val = strip_tags($val);
+        if (mb_strlen($val) > $f['max']) $val = mb_substr($val, 0, $f['max']);
+        $kv[$key] = $val;
+    }
+    saveSettings($kv, $me['id']);
+    $message = 'Branding-Einstellungen gespeichert.'; $msgType = 'ok';
+}
+
+if ($action === 'save_template' || $action === 'create_template') {
+    $key     = trim($_POST['key'] ?? '');
+    $label   = trim($_POST['label'] ?? '');
+    $subject = trim($_POST['subject'] ?? '');
+    $body    = trim($_POST['body'] ?? '');
+
+    if ($action === 'create_template') {
+        $key = strtolower(preg_replace('/[^a-z0-9_\-]/', '', str_replace(' ', '-', strtolower($key))));
+    }
+
+    if ($action === 'create_template' && (strlen($key) < 2 || strlen($key) > 40)) {
+        $message = 'Ungültiger Schlüssel (2–40 Zeichen: a–z, 0–9, _ oder -).'; $msgType = 'error';
+    } elseif ($action === 'create_template' && array_key_exists($key, getMailTemplatesRaw())) {
+        $message = "Schlüssel '$key' existiert bereits."; $msgType = 'error';
+    } elseif ($key === '' || $label === '' || $subject === '' || $body === '') {
+        $message = 'Schlüssel, Bezeichnung, Betreff und Text dürfen nicht leer sein.'; $msgType = 'error';
+    } else {
+        saveMailTemplate(
+            $key, mb_substr($label, 0, 120), mb_substr($subject, 0, 255), $body,
+            $action === 'create_template' ? null : (int) ($_POST['sort'] ?? 0),
+            $me['id']
+        );
+        $message = $action === 'create_template' ? "Vorlage '$key' angelegt." : "Vorlage '$key' gespeichert.";
+        $msgType = 'ok';
+    }
+}
+
+if ($action === 'delete_template') {
+    $key = trim($_POST['key'] ?? '');
+    if ($key === 'generic') {
+        $message = "'generic' ist der Fallback und kann nicht gelöscht werden."; $msgType = 'error';
+    } elseif ($key !== '') {
+        deleteMailTemplate($key);
+        $message = "Vorlage '$key' gelöscht."; $msgType = 'ok';
+    }
+}
+
+if ($action === 'reset_templates') {
+    resetMailTemplates(abuseTemplateDefaults(), $me['id']);
+    $message = 'Vorlagen auf Standard zurückgesetzt.'; $msgType = 'ok';
+}
 
 if ($action === 'create_user') {
     $username = trim($_POST['username'] ?? '');
@@ -66,9 +143,20 @@ if ($action === 'delete_user') {
     }
 }
 
-$users    = getAllUsers();
-$loginLog = getLoginLog(100);
-$tab      = $_GET['tab'] ?? 'users';
+$users        = getAllUsers();
+$loginLog     = getLoginLog(100);
+$mailTemplates = getMailTemplatesRaw();
+$tab          = in_array($_GET['tab'] ?? '', ['users', 'log', 'branding', 'templates'], true) ? $_GET['tab'] : 'users';
+
+// Branding-Formular vorbelegen: gespeicherter Wert, sonst config.php-Default
+$cfgFile = appConfig();
+$stored  = getAllSettings();
+$brand   = [];
+foreach ($BRAND_FIELDS as $key => $f) {
+    $brand[$key] = array_key_exists($key, $stored)
+        ? (string) $stored[$key]
+        : (string) ($cfgFile[$key] ?? '');
+}
 
 function h(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
 function fmtDate(?string $dt): string {
@@ -162,14 +250,37 @@ tr:hover td { background: rgba(255,255,255,.02); }
 .modal h2 { font-size: 17px; font-weight: 600; color: #f1f5f9; margin-bottom: 20px; letter-spacing: -.01em; }
 .form-group { margin-bottom: 16px; }
 .form-group label { display: block; font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .03em; }
-.form-group input, .form-group select {
+.form-group input, .form-group select, .form-group textarea {
     width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
     padding: 9px 12px; color: var(--text); font-size: 13px; font-family: inherit; outline: none;
     transition: border-color .15s;
 }
-.form-group input:focus, .form-group select:focus { border-color: var(--accent); }
+.form-group textarea { min-height: 90px; resize: vertical; line-height: 1.5; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); }
+.form-group .hint { font-size: 11px; color: var(--muted); margin-top: 5px; text-transform: none; letter-spacing: 0; font-weight: 400; }
 select option { background: var(--card); }
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+/* Branding-Formular */
+.settings-form { padding: 20px; max-width: 620px; }
+.settings-form .form-group label { text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 600; color: var(--text); }
+.settings-form .modal-actions { justify-content: flex-start; }
+
+/* Vorlagen-Editor */
+.tpl-wrap { padding: 20px; }
+.tpl-legend { font-size: 12px; color: var(--muted); margin-bottom: 16px; line-height: 1.7; }
+.tpl-legend code { margin-right: 4px; }
+.tpl-item { border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 10px; background: var(--surface); }
+.tpl-item > summary { padding: 12px 16px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text); list-style: none; display: flex; align-items: center; gap: 8px; }
+.tpl-item > summary::-webkit-details-marker { display: none; }
+.tpl-item > summary::before { content: '▸'; color: var(--muted); font-size: 11px; }
+.tpl-item[open] > summary::before { content: '▾'; }
+.tpl-item > summary .tpl-key { font-family: monospace; font-size: 11px; color: var(--muted); font-weight: 400; }
+.tpl-body { padding: 4px 16px 16px; }
+.tpl-body .form-group input, .tpl-body .form-group textarea { background: var(--bg); }
+.tpl-body textarea { min-height: 230px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; white-space: pre; overflow-wrap: normal; overflow-x: auto; }
+.tpl-actions { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
+.tpl-item-new { border-color: var(--border-hi); }
 
 /* Log */
 code { background: var(--bg); padding: 2px 7px; border-radius: 4px; font-family: monospace; color: #93c5fd; font-size: 12px; }
@@ -211,11 +322,17 @@ code { background: var(--bg); padding: 2px 7px; border-radius: 4px; font-family:
 
     <!-- Tabs -->
     <div class="tabs">
-        <button class="tab-btn <?= $tab === 'users' ? 'active' : '' ?>" onclick="switchTab('users')">
+        <button class="tab-btn <?= $tab === 'users' ? 'active' : '' ?>" data-tab="users" onclick="switchTab('users')">
             Benutzer (<?= count($users) ?>)
         </button>
-        <button class="tab-btn <?= $tab === 'log' ? 'active' : '' ?>" onclick="switchTab('log')">
+        <button class="tab-btn <?= $tab === 'log' ? 'active' : '' ?>" data-tab="log" onclick="switchTab('log')">
             Login-Log
+        </button>
+        <button class="tab-btn <?= $tab === 'branding' ? 'active' : '' ?>" data-tab="branding" onclick="switchTab('branding')">
+            Branding
+        </button>
+        <button class="tab-btn <?= $tab === 'templates' ? 'active' : '' ?>" data-tab="templates" onclick="switchTab('templates')">
+            Vorlagen (<?= count($mailTemplates) ?>)
         </button>
     </div>
 
@@ -243,6 +360,9 @@ code { background: var(--bg); padding: 2px 7px; border-radius: 4px; font-family:
                         <strong style="font-family:monospace"><?= h($u['username']) ?></strong>
                         <?php if ($u['id'] == $me['id']): ?>
                         <span style="font-size:11px;color:var(--muted);margin-left:6px">(Du)</span>
+                        <?php endif; ?>
+                        <?php if (!empty($u['full_name'])): ?>
+                        <div style="font-size:12px;color:var(--muted);margin-top:2px"><?= h($u['full_name']) ?></div>
                         <?php endif; ?>
                     </td>
                     <td>
@@ -322,6 +442,130 @@ code { background: var(--bg); padding: 2px 7px; border-radius: 4px; font-family:
         </div>
     </div>
 
+    <!-- Branding Tab -->
+    <div id="tab-branding" <?= $tab !== 'branding' ? 'style="display:none"' : '' ?>>
+        <div class="section">
+            <div class="section-head">
+                <span class="section-title">Branding &amp; Individualisierung</span>
+            </div>
+            <form method="POST" action="?tab=branding" class="settings-form">
+                <input type="hidden" name="action" value="save_settings">
+                <p style="font-size:12px;color:var(--muted);margin-bottom:18px;line-height:1.6">
+                    Diese Werte überschreiben die Defaults aus <code>app/config/config.php</code>.
+                    Zugangsdaten (Datenbank, SMTP, IMAP), die Absenderadresse und das Reportnummer-Prefix
+                    bleiben bewusst nur in der Datei.
+                </p>
+                <?php foreach ($BRAND_FIELDS as $key => $f): ?>
+                <div class="form-group">
+                    <label for="f_<?= h($key) ?>"><?= h($f['label']) ?></label>
+                    <?php if ($f['type'] === 'textarea'): ?>
+                    <textarea id="f_<?= h($key) ?>" name="<?= h($key) ?>" maxlength="<?= (int)$f['max'] ?>" placeholder="<?= h($f['ph']) ?>"><?= h($brand[$key]) ?></textarea>
+                    <?php else: ?>
+                    <input type="text" id="f_<?= h($key) ?>" name="<?= h($key) ?>" maxlength="<?= (int)$f['max'] ?>" autocomplete="off" placeholder="<?= h($f['ph']) ?>" value="<?= h($brand[$key]) ?>">
+                    <?php endif; ?>
+                    <?php if (!empty($f['help'])): ?>
+                    <div class="hint"><?= h($f['help']) ?></div>
+                    <?php endif; ?>
+                </div>
+                <?php endforeach; ?>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">Speichern</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Vorlagen Tab -->
+    <div id="tab-templates" <?= $tab !== 'templates' ? 'style="display:none"' : '' ?>>
+        <div class="section">
+            <div class="section-head">
+                <span class="section-title">Mail-Vorlagen</span>
+                <form method="POST" action="?tab=templates" onsubmit="return confirm('Alle Vorlagen auf den eingebauten Standard zurücksetzen? Eigene Änderungen und neue Vorlagen gehen verloren.')">
+                    <input type="hidden" name="action" value="reset_templates">
+                    <button type="submit" class="btn btn-warning btn-sm">Auf Standard zurücksetzen</button>
+                </form>
+            </div>
+            <div class="tpl-wrap">
+                <div class="tpl-legend">
+                    Platzhalter (werden beim Entwurf ersetzt):
+                    <?php foreach (ABUSE_TEMPLATE_PLACEHOLDERS as $ph): ?><code>{<?= h($ph) ?>}</code><?php endforeach; ?><br>
+                    <code>{reporter}</code> = Name + Rolle des Report-Erstellers ·
+                    <code>{evidence}</code> = Belege/Notiz aus dem Report ·
+                    <code>{org}</code> aus dem Branding-Tab.
+                </div>
+
+                <?php foreach ($mailTemplates as $key => $t): ?>
+                <details class="tpl-item">
+                    <summary>
+                        <?= h($t['label']) ?>
+                        <span class="tpl-key"><?= h($key) ?><?= $key === 'generic' ? ' · Fallback' : '' ?></span>
+                    </summary>
+                    <div class="tpl-body">
+                        <form method="POST" action="?tab=templates">
+                            <input type="hidden" name="action" value="save_template">
+                            <input type="hidden" name="key" value="<?= h($key) ?>">
+                            <input type="hidden" name="sort" value="<?= (int) $t['sort'] ?>">
+                            <div class="form-group">
+                                <label>Bezeichnung</label>
+                                <input type="text" name="label" maxlength="120" value="<?= h($t['label']) ?>">
+                            </div>
+                            <div class="form-group">
+                                <label>Betreff</label>
+                                <input type="text" name="subject" maxlength="255" value="<?= h($t['subject']) ?>">
+                            </div>
+                            <div class="form-group">
+                                <label>Text</label>
+                                <textarea name="body"><?= h($t['body']) ?></textarea>
+                            </div>
+                            <div class="tpl-actions">
+                                <button type="submit" class="btn btn-primary btn-sm">Speichern</button>
+                                <span class="hint" style="margin:0 0 0 auto">zuletzt geändert <?= fmtDate($t['updated_at']) ?></span>
+                            </div>
+                        </form>
+                        <?php if ($key !== 'generic'): ?>
+                        <form method="POST" action="?tab=templates" style="margin-top:8px"
+                              onsubmit="return confirm('Vorlage &quot;<?= h($key) ?>&quot; löschen?')">
+                            <input type="hidden" name="action" value="delete_template">
+                            <input type="hidden" name="key" value="<?= h($key) ?>">
+                            <button type="submit" class="btn btn-danger btn-sm">Vorlage löschen</button>
+                        </form>
+                        <?php endif; ?>
+                    </div>
+                </details>
+                <?php endforeach; ?>
+
+                <details class="tpl-item tpl-item-new">
+                    <summary>Neue Vorlage&nbsp;<span class="tpl-key">+</span></summary>
+                    <div class="tpl-body">
+                        <form method="POST" action="?tab=templates">
+                            <input type="hidden" name="action" value="create_template">
+                            <div class="form-group">
+                                <label>Schlüssel</label>
+                                <input type="text" name="key" maxlength="40" placeholder="z.B. ddos" autocomplete="off">
+                                <div class="hint">Klein, ohne Leerzeichen: a–z, 0–9, _ oder -. Nicht mehr änderbar.</div>
+                            </div>
+                            <div class="form-group">
+                                <label>Bezeichnung</label>
+                                <input type="text" name="label" maxlength="120" placeholder="z.B. DDoS-Angriff">
+                            </div>
+                            <div class="form-group">
+                                <label>Betreff</label>
+                                <input type="text" name="subject" maxlength="255" placeholder="Abuse Report {ref} — {ip}">
+                            </div>
+                            <div class="form-group">
+                                <label>Text</label>
+                                <textarea name="body" placeholder="Hello,&#10;&#10;..."></textarea>
+                            </div>
+                            <div class="tpl-actions">
+                                <button type="submit" class="btn btn-primary btn-sm">Anlegen</button>
+                            </div>
+                        </form>
+                    </div>
+                </details>
+            </div>
+        </div>
+    </div>
+
 </div><!-- /wrap -->
 
 <!-- Create User Modal -->
@@ -378,10 +622,11 @@ code { background: var(--bg); padding: 2px 7px; border-radius: 4px; font-family:
 
 <script>
 function switchTab(tab) {
-    document.getElementById('tab-users').style.display = tab === 'users' ? '' : 'none';
-    document.getElementById('tab-log').style.display   = tab === 'log'   ? '' : 'none';
-    document.querySelectorAll('.tab-btn').forEach((btn, i) => {
-        btn.classList.toggle('active', (i === 0 && tab === 'users') || (i === 1 && tab === 'log'));
+    ['users', 'log', 'branding', 'templates'].forEach(t => {
+        document.getElementById('tab-' + t).style.display = t === tab ? '' : 'none';
+    });
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tab);
     });
     history.replaceState(null, '', '?tab=' + tab);
 }
